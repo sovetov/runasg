@@ -19,8 +19,7 @@ static void ProcessCmdLine(wchar_t** const lpCmdLine, wchar_t** const lpUsername
 		*(*lpCmdLine)++ = L'\0';
 }
 
-static void ErrorMessage(wchar_t* function) {
-	DWORD error = GetLastError();
+static void ErrorMessage(wchar_t* function, DWORD error) {
 	LPWSTR message = NULL;
 	FormatMessageW(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -72,7 +71,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			NULL,
 			CREDUIWIN_GENERIC | CREDUIWIN_IN_CRED_ONLY);
 		if (dwErr != NO_ERROR) {
-			ErrorMessage(L"CredUIPromptForWindowsCredentials");
+			ErrorMessage(L"CredUIPromptForWindowsCredentials", dwErr);
 			if (dwErr == ERROR_CANCELLED) {
 				return 0;
 			}
@@ -106,7 +105,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			NULL, lpCmdLine,
 			CREATE_NO_WINDOW,
 			NULL, NULL, &startup, &process)) {
-			ErrorMessage(L"CreateProcessWithLogonW");
+			ErrorMessage(L"CreateProcessWithLogonW", GetLastError());
 			continue;
 		}
 		CloseHandle(process.hProcess);
