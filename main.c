@@ -51,61 +51,66 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		return 100;
 	}
 
-	CREDUI_INFO credUi;
-	ZeroMemory(&credUi, sizeof(credUi));
-	credUi.cbSize = sizeof(credUi);
-	credUi.hwndParent = NULL;
-	credUi.pszCaptionText = L"Run as";
-	credUi.pszMessageText = lpCmdLine;
-	credUi.hbmBanner = NULL;
-	ULONG authPackage = 0;  // Should we look it up by name?
-	LPVOID outAuth;
-	ULONG outAuthSize;
-	BYTE inAuth[512];
-	ULONG inAuthSize = sizeof(inAuth);
-	CredPackAuthenticationBufferW(0, nameInput, L"", inAuth, &inAuthSize);
-	dwErr = CredUIPromptForWindowsCredentialsW(
-		&credUi, 0, &authPackage,
-		inAuth, inAuthSize,
-		&outAuth, &outAuthSize,
-		NULL,
-		CREDUIWIN_GENERIC | CREDUIWIN_IN_CRED_ONLY);
-	if (dwErr != NO_ERROR) {
-		ErrorMessage(L"CredUIPromptForWindowsCredentials");
-		return 101;
-	}
-	wchar_t name[CREDUI_MAX_USERNAME_LENGTH + 1] = L"";
-	wchar_t domain[CREDUI_MAX_USERNAME_LENGTH + 1] = L"";
-	wchar_t password[CREDUI_MAX_PASSWORD_LENGTH + 1] = L"";
-	DWORD nameLen = ARRAYSIZE(name);
-	DWORD domainLen = ARRAYSIZE(domain);
-	DWORD passwordLen = ARRAYSIZE(password);
-	CredUnPackAuthenticationBufferW(
-		0,  // Flags
-		outAuth, outAuthSize,
-		name, &nameLen,
-		domain, &domainLen,
-		password, &passwordLen);
-	SecureZeroMemory(outAuth, outAuthSize);
-	CoTaskMemFree(outAuth);
+	for (;;) {
+		CREDUI_INFO credUi;
+		ZeroMemory(&credUi, sizeof(credUi));
+		credUi.cbSize = sizeof(credUi);
+		credUi.hwndParent = NULL;
+		credUi.pszCaptionText = L"Run as";
+		credUi.pszMessageText = lpCmdLine;
+		credUi.hbmBanner = NULL;
+		ULONG authPackage = 0;  // Should we look it up by name?
+		LPVOID outAuth;
+		ULONG outAuthSize;
+		BYTE inAuth[512];
+		ULONG inAuthSize = sizeof(inAuth);
+		CredPackAuthenticationBufferW(0, nameInput, L"", inAuth, &inAuthSize);
+		dwErr = CredUIPromptForWindowsCredentialsW(
+			&credUi, 0, &authPackage,
+			inAuth, inAuthSize,
+			&outAuth, &outAuthSize,
+			NULL,
+			CREDUIWIN_GENERIC | CREDUIWIN_IN_CRED_ONLY);
+		if (dwErr != NO_ERROR) {
+			ErrorMessage(L"CredUIPromptForWindowsCredentials");
+			if (dwErr == ERROR_CANCELLED) {
+				return 0;
+			}
+			continue;
+		}
+		wchar_t name[CREDUI_MAX_USERNAME_LENGTH + 1] = L"";
+		wchar_t domain[CREDUI_MAX_USERNAME_LENGTH + 1] = L"";
+		wchar_t password[CREDUI_MAX_PASSWORD_LENGTH + 1] = L"";
+		DWORD nameLen = ARRAYSIZE(name);
+		DWORD domainLen = ARRAYSIZE(domain);
+		DWORD passwordLen = ARRAYSIZE(password);
+		CredUnPackAuthenticationBufferW(
+			0,  // Flags
+			outAuth, outAuthSize,
+			name, &nameLen,
+			domain, &domainLen,
+			password, &passwordLen);
+		SecureZeroMemory(outAuth, outAuthSize);
+		CoTaskMemFree(outAuth);
 
-	STARTUPINFO startup;
-	PROCESS_INFORMATION process;
-	ZeroMemory(&startup, sizeof(startup));
-	startup.cb = sizeof(startup);
-	ZeroMemory(&process, sizeof(process));
-	// CreateProcessWithTokenW or CreateProcessW after ImpersonateLoggedOnUser
-	// require SE_ASSIGNPRIMARYTOKEN_NAME and SE_INCREASE_QUOTA_NAME privileges.
-	if (!CreateProcessWithLogonW(
-		name, domain, password,
-		LOGON_WITH_PROFILE,
-		NULL, lpCmdLine,
-		CREATE_NO_WINDOW,
-		NULL, NULL, &startup, &process)) {
-		ErrorMessage(L"CreateProcessWithLogonW");
-		return 102;
+		STARTUPINFO startup;
+		PROCESS_INFORMATION process;
+		ZeroMemory(&startup, sizeof(startup));
+		startup.cb = sizeof(startup);
+		ZeroMemory(&process, sizeof(process));
+		// CreateProcessWithTokenW or CreateProcessW after ImpersonateLoggedOnUser
+		// require SE_ASSIGNPRIMARYTOKEN_NAME and SE_INCREASE_QUOTA_NAME privileges.
+		if (!CreateProcessWithLogonW(
+			name, domain, password,
+			LOGON_WITH_PROFILE,
+			NULL, lpCmdLine,
+			CREATE_NO_WINDOW,
+			NULL, NULL, &startup, &process)) {
+			ErrorMessage(L"CreateProcessWithLogonW");
+			continue;
+		}
+		CloseHandle(process.hProcess);
+		CloseHandle(process.hThread);
+		return 0;
 	}
-	CloseHandle(process.hProcess);
-	CloseHandle(process.hThread);
-	return 0;
 }
