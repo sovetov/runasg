@@ -83,12 +83,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		DWORD nameLen = ARRAYSIZE(name);
 		DWORD domainLen = ARRAYSIZE(domain);
 		DWORD passwordLen = ARRAYSIZE(password);
-		CredUnPackAuthenticationBufferW(
+		if (!CredUnPackAuthenticationBufferW(
 			0,  // Flags
 			outAuth, outAuthSize,
 			name, &nameLen,
 			domain, &domainLen,
-			password, &passwordLen);
+			password, &passwordLen)) {
+			ErrorMessage(L"CredUnPackAuthenticationBufferW", GetLastError());
+			continue;
+		}
 		SecureZeroMemory(outAuth, outAuthSize);
 		CoTaskMemFree(outAuth);
 
