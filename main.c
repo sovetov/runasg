@@ -89,14 +89,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	SecureZeroMemory(outAuth, outAuthSize);
 	CoTaskMemFree(outAuth);
 
-	HANDLE logonSecurityToken = INVALID_HANDLE_VALUE;
-	if (!LogonUserW(
-		name, domain, password,
-		LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &logonSecurityToken)) {
-		ErrorMessage(L"LogonUserW");
-		return 102;
-	}
-
 	STARTUPINFO startup;
 	PROCESS_INFORMATION process;
 	ZeroMemory(&startup, sizeof(startup));
@@ -115,6 +107,5 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	}
 	CloseHandle(process.hProcess);
 	CloseHandle(process.hThread);
-	CloseHandle(logonSecurityToken);
 	return 0;
 }
